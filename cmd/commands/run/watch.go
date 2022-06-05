@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"os"
 	"os/exec"
+	path "path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
@@ -143,6 +144,35 @@ func AutoBuild(files []string, isgenerate bool) {
 			utils.Notify("", "Failed to generate the docs.")
 			beeLogger.Log.Errorf("Failed to generate the docs.")
 			return
+		}
+
+		appPath, _ := os.Getwd()
+		// Replace with default swagger path "swagger.json"
+		targetFile := path.Join(appPath, "index.html")
+		f, err := os.OpenFile(targetFile, os.O_RDWR, 0644)
+		if err == nil {
+			defer f.Close()
+
+			fileInfo, _ := f.Stat()
+
+			content := make([]byte, fileInfo.Size())
+			_, err = f.Read(content)
+			if err == nil {
+				// Actual replacement
+				stringContent := strings.Replace(string(content), "https://petstore.swagger.io/v2/swagger.json", "swagger.json", -1)
+
+				// Rewrite the file with the content
+				if err = os.Truncate(targetFile, 0); err == nil {
+					_, err = f.WriteAt([]byte(stringContent), 0)
+					if err != nil {
+						beeLogger.Log.Errorf("Replacing error: %v", err)
+					}
+				}
+			} else {
+				beeLogger.Log.Warnf("Replacing to local swagger failed: %v", err)
+			}
+		} else {
+			beeLogger.Log.Warnf("Replacing to local swagger failed: %v", err)
 		}
 		beeLogger.Log.Success("Docs generated!")
 	}
